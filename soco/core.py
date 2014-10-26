@@ -237,6 +237,10 @@ class SoCo(_SocoSingletonBase):
                                             from the current queue.
         add_item_to_sonos_playlist -- Adds a queueable item to a Sonos'
                                        playlist
+        add_shared_folder -- Add a Windows/Samba shared folder to the music
+                              library
+        remove_shared_folder -- Remove a Windows/Samba shared folder from
+                                 the music library
 
     Properties::
 
@@ -1261,6 +1265,42 @@ class SoCo(_SocoSingletonBase):
             max_items,
             full_album_art_uri)
         return out
+
+    def add_shared_folder(self, location, username = "", password = ""):
+        """Add a Windows/Samba shared folder to the music library
+
+           location must be the share name, e.g. "//server/path/to/music"
+
+        """
+        # (Should this be in data_structures.py?)
+        xml_attrib = {
+            'xmlns:dc': 'http://purl.org/dc/elements/1.1/',
+            'xmlns:upnp': 'urn:schemas-upnp-org:metadata-1-0/upnp/',
+            'xmlns': 'urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/'
+        }
+        xml = XML.Element('DIDL-Lite', xml_attrib)
+        container_attrib = \
+            {'id': '',
+             'restricted': 'false'}
+        container = XML.SubElement(xml, 'container', container_attrib)
+        XML.SubElement(container, 'dc:title').text = location
+        XML.SubElement(container, 'r:usernameX').text = username
+        XML.SubElement(container, 'r:passwordX').text = password
+        metadata = XML.tostring(xml)
+        self.contentDirectory.CreateObject([
+            ('ContainerID', "S:"),
+            ('Elements', metadata)
+            ])
+
+    def remove_shared_folder(self, location):
+        """Remove a Windows/Samba shared folder from the music library
+
+           location must be the share name, e.g. "//server/path/to/music"
+
+        """
+        self.contentDirectory.DestroyObject([
+            ('ObjectID', "S:%s"%location)
+            ])
 
     def get_artists(self, start=0, max_items=100, full_album_art_uri=False):
         """ Convinience method for :py:meth:`get_music_library_information`
